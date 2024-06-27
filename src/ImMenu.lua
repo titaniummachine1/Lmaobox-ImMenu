@@ -1,7 +1,15 @@
 --[[
     Immediate mode menu library for Lmaobox
     Author: github.com/lnx00
+    updated by: https://github.com/titaniummachine1
 ]]
+
+-- Unload the module if it's already loaded fixes all posible bullshit that happens when immenu glitches out
+-- put in your lua if imenu breakes alot
+if package.loaded["ImMenu"] then
+    package.loaded["ImMenu"] = nil
+end
+
 if UnloadLib ~= nil then UnloadLib() end
 
 -- Import lnxLib
@@ -28,7 +36,7 @@ ImAlign = { Vertical = 0, Horizontal = 1 }
 ---@class ImMenu
 ---@field public Cursor ImPos
 ---@field public ActiveItem ImItemID|nil
-local ImMenu = {
+ImMenu = {
     Cursor = { X = 0, Y = 0 },
     ActiveItem = nil,
     ActivePopup = nil
@@ -41,19 +49,19 @@ local lastKey = { Key = 0, Time = 0 }
 local inPopup = false
 
 -- Input Helpers
-local MouseHelper = KeyHelper.new(MOUSE_LEFT)
-local EnterHelper = KeyHelper.new(KEY_ENTER)
-local LeftArrow = KeyHelper.new(KEY_LEFT)
-local RightArrow = KeyHelper.new(KEY_RIGHT)
+MouseHelper = KeyHelper.new(MOUSE_LEFT)
+EnterHelper = KeyHelper.new(KEY_ENTER)
+LeftArrow = KeyHelper.new(KEY_LEFT)
+RightArrow = KeyHelper.new(KEY_RIGHT)
 
 ---@type table<string, ImWindow>
-local Windows = {}
+Windows = {}
 
 ---@type function[]
-local LateDrawList = {}
+LateDrawList = {}
 
 ---@type ImColor[]
-local Colors = {
+Colors = {
     Title = { 55, 100, 215, 255 },
     Text = { 255, 255, 255, 255 },
     Window = { 30, 30, 30, 255 },
@@ -68,7 +76,7 @@ local Colors = {
 }
 
 ---@type ImStyle[]
-local Style = {
+Style = {
     Font = Fonts.Verdana,
     ItemPadding = 5,
     ItemMargin = 5,
@@ -84,10 +92,10 @@ local Style = {
 }
 
 -- Stacks
-local WindowStack = Stack.new()
-local FrameStack = Stack.new()
-local ColorStack = Stack.new()
-local StyleStack = Stack.new()
+WindowStack = Stack.new()
+FrameStack = Stack.new()
+ColorStack = Stack.new()
+StyleStack = Stack.new()
 
 --[[ Private Functions ]]
 ---@param color ImColor
@@ -379,23 +387,29 @@ function ImMenu.Begin(title, visible)
     local hovered, clicked, active = ImMenu.GetInteraction(window.X, window.Y, window.W, titleHeight, title)
 
     -- Title bar
-    draw.Color(table.unpack(Colors.Title))
-    draw.OutlinedRect(window.X, window.Y, window.X + window.W, window.Y + window.H)
-    draw.FilledRect(window.X, window.Y, window.X + window.W, window.Y + titleHeight)
+    if type(Colors.Title) == "table" then
+        draw.Color(math.floor(Colors.Title[1]), math.floor(Colors.Title[2]), math.floor(Colors.Title[3]), math.floor(Colors.Title[4]))
+    end
+    draw.OutlinedRect(math.floor(window.X), math.floor(window.Y), math.floor(window.X + window.W), math.floor(window.Y + window.H))
+    draw.FilledRect(math.floor(window.X), math.floor(window.Y), math.floor(window.X + window.W), math.floor(window.Y + titleHeight))
 
     -- Title text
-    draw.Color(table.unpack(Colors.Text))
-    draw.Text(window.X + (window.W // 2) - (txtWidth // 2), window.Y + (20 // 2) - (txtHeight // 2), titleText)
+    if type(Colors.Text) == "table" then
+        draw.Color(math.floor(Colors.Text[1]), math.floor(Colors.Text[2]), math.floor(Colors.Text[3]), math.floor(Colors.Text[4]))
+    end
+    draw.Text(math.floor(window.X + (window.W - txtWidth) / 2), math.floor(window.Y + (titleHeight - txtHeight) / 2), titleText)
 
     -- Background
-    draw.Color(table.unpack(Colors.Window))
-    draw.FilledRect(window.X, window.Y + titleHeight, window.X + window.W, window.Y + window.H + titleHeight)
+    if type(Colors.Window) == "table" then
+        draw.Color(math.floor(Colors.Window[1]), math.floor(Colors.Window[2]), math.floor(Colors.Window[3]), math.floor(Colors.Window[4]))
+    end
+    draw.FilledRect(math.floor(window.X), math.floor(window.Y + titleHeight), math.floor(window.X + window.W), math.floor(window.Y + window.H + titleHeight))
 
     -- Border
-    if Style.WindowBorder then
-        draw.Color(UnpackColor(Colors.WindowBorder))
-        draw.OutlinedRect(window.X, window.Y, window.X + window.W, window.Y + window.H + titleHeight)
-        draw.Line(window.X, window.Y + titleHeight, window.X + window.W, window.Y + titleHeight)
+    if Style.WindowBorder and type(Colors.WindowBorder) == "table" then
+        draw.Color(math.floor(Colors.WindowBorder[1]), math.floor(Colors.WindowBorder[2]), math.floor(Colors.WindowBorder[3]), math.floor(Colors.WindowBorder[4]))
+        draw.OutlinedRect(math.floor(window.X), math.floor(window.Y), math.floor(window.X + window.W), math.floor(window.Y + window.H + titleHeight))
+        draw.Line(math.floor(window.X), math.floor(window.Y + titleHeight), math.floor(window.X + window.W), math.floor(window.Y + titleHeight))
     end
 
     -- Mouse drag
@@ -405,22 +419,24 @@ function ImMenu.Begin(title, visible)
             dragPos = { X = mX - window.X, Y = mY - window.Y }
         end
 
-        window.X = math.clamp(mX - dragPos.X, 0, screenWidth - window.W)
-        window.Y = math.clamp(mY - dragPos.Y, 0, screenHeight - window.H - titleHeight)
+        window.X = math.clamp(math.floor(mX - dragPos.X), 0, screenWidth - window.W)
+        window.Y = math.clamp(math.floor(mY - dragPos.Y), 0, screenHeight - window.H - titleHeight)
     end
 
     -- Update the cursor
-    ImMenu.Cursor.X = window.X
-    ImMenu.Cursor.Y = window.Y + titleHeight
+    ImMenu.Cursor.X = math.floor(window.X)
+    ImMenu.Cursor.Y = math.floor(window.Y + titleHeight)
 
     ImMenu.BeginFrame()
 
-    -- Store and pish the window
+    -- Store and push the window
     Windows[title] = window
     WindowStack:push(window)
 
     return true
 end
+
+
 
 -- Ends the current window
 ---@return ImWindow
@@ -444,31 +460,44 @@ function ImMenu.DrawLate(func)
     table.insert(LateDrawList, func)
 end
 
----@param x integer
----@param y integer
----@param func function
-function ImMenu.Popup(x, y, func)
+function ImMenu.Popup(x, y, func, options)
+    options = options or {}
+    local framePadding = options.framePadding or 0
+    local itemMargin = options.itemMargin or 0
+
     ImMenu.DrawLate(function()
-        inPopup = true
+        ImMenu.inPopup = true
 
-        -- Prepare cursor
-        ImMenu.Cursor.X = x
-        ImMenu.Cursor.Y = y
+        -- Ensure the popup stays within screen bounds
+        local screenWidth, screenHeight = draw.GetScreenSize()
+        ImMenu.Cursor.X = math.max(0, math.min(math.floor(x), screenWidth - 1))
+        ImMenu.Cursor.Y = math.max(0, math.min(math.floor(y), screenHeight - 1))
 
-        -- Draw the popup | TODO: Add a popup frame background
-        ImMenu.PushStyle("FramePadding", 0)
-        ImMenu.PushStyle("ItemMargin", 0)
+        ImMenu.PushStyle("FramePadding", framePadding)
+        ImMenu.PushStyle("ItemMargin", itemMargin)
         ImMenu.BeginFrame()
-        func()
+
+        local success, errorMsg = pcall(func)
+        if not success then
+            ImMenu.Text("Error in popup: " .. tostring(errorMsg))
+        end
+
         local frame = ImMenu.EndFrame()
         ImMenu.PopStyle(2)
 
-        -- Close the popup if clicked outside of it
-        if not Input.MouseInBounds(frame.X, frame.Y, frame.X + frame.W, frame.Y + frame.H) and MouseHelper:Pressed() then
+        -- Ensure frame dimensions are integers
+        frame.X = math.floor(frame.X)
+        frame.Y = math.floor(frame.Y)
+        frame.W = math.floor(frame.W)
+        frame.H = math.floor(frame.H)
+
+        -- Check interaction to close popup
+        local hovered, clicked, active = ImMenu.GetInteraction(frame.X, frame.Y, frame.W, frame.H, "popup")
+        if frame and (not hovered and clicked or input.IsButtonPressed(KEY_ESCAPE)) then
             ImMenu.ActivePopup = nil
         end
 
-        inPopup = false
+        ImMenu.inPopup = false
     end)
 end
 
@@ -480,13 +509,14 @@ function ImMenu.Text(text)
     local txtWidth, txtHeight = draw.GetTextSize(label)
     local width, height = ImMenu.GetSize(txtWidth, txtHeight)
 
-    draw.Color(table.unpack(Colors.Text))
-    draw.Text(x + (width // 2) - (txtWidth // 2), y + (height // 2) - (txtHeight // 2), label)
+    if type(Colors.Text) == "table" then
+        draw.Color(math.floor(Colors.Text[1] or 0), math.floor(Colors.Text[2] or 0), math.floor(Colors.Text[3] or 0), math.floor(Colors.Text[4] or 255))
+    end
+    draw.Text(math.floor(x + (width - txtWidth) / 2), math.floor(y + (height - txtHeight) / 2), label)
 
     ImMenu.UpdateCursor(width, height)
 end
 
--- Draws a checkbox that toggles a value
 ---@param text string
 ---@param state boolean
 ---@return boolean state, boolean clicked
@@ -500,24 +530,27 @@ function ImMenu.Checkbox(text, state)
 
     -- Box
     ImMenu.InteractionColor(hovered, active)
-    draw.FilledRect(x, y, x + boxSize, y + boxSize)
+    draw.FilledRect(math.floor(x), math.floor(y), math.floor(x + boxSize), math.floor(y + boxSize))
 
     -- Border
-    if Style.CheckboxBorder then
-        draw.Color(UnpackColor(Colors.Border))
-        draw.OutlinedRect(x, y, x + boxSize, y + boxSize)
+    if Style.CheckboxBorder and type(Colors.Border) == "table" then
+        draw.Color(math.floor(Colors.Border[1] or 0), math.floor(Colors.Border[2] or 0), math.floor(Colors.Border[3] or 0), math.floor(Colors.Border[4] or 255))
+        draw.OutlinedRect(math.floor(x), math.floor(y), math.floor(x + boxSize), math.floor(y + boxSize))
     end
 
     -- Check
     if state then
-        draw.Color(UnpackColor(Colors.Highlight))
-        draw.FilledRect(x + Style.ItemPadding, y + Style.ItemPadding, x + (boxSize - Style.ItemPadding),
-        y + (boxSize - Style.ItemPadding))
+        if type(Colors.Highlight) == "table" then
+            draw.Color(math.floor(Colors.Highlight[1] or 0), math.floor(Colors.Highlight[2] or 0), math.floor(Colors.Highlight[3] or 0), math.floor(Colors.Highlight[4] or 255))
+        end
+        draw.FilledRect(math.floor(x + Style.ItemPadding), math.floor(y + Style.ItemPadding), math.floor(x + boxSize - Style.ItemPadding), math.floor(y + boxSize - Style.ItemPadding))
     end
 
     -- Text
-    draw.Color(UnpackColor(Colors.Text))
-    draw.Text(x + boxSize + Style.ItemMargin, y + (height // 2) - (txtHeight // 2), label)
+    if type(Colors.Text) == "table" then
+        draw.Color(math.floor(Colors.Text[1] or 0), math.floor(Colors.Text[2] or 0), math.floor(Colors.Text[3] or 0), math.floor(Colors.Text[4] or 255))
+    end
+    draw.Text(math.floor(x + boxSize + Style.ItemMargin), math.floor(y + (height - txtHeight) / 2), label)
 
     -- Update State
     if clicked then
@@ -540,16 +573,18 @@ function ImMenu.Button(text)
 
     -- Background
     ImMenu.InteractionColor(hovered, active)
-    draw.FilledRect(x, y, x + width, y + height)
+    draw.FilledRect(math.floor(x), math.floor(y), math.floor(x + width), math.floor(y + height))
 
-    if Style.ButtonBorder then
-        draw.Color(UnpackColor(Colors.Border))
-        draw.OutlinedRect(x, y, x + width, y + height)
+    if Style.ButtonBorder and type(Colors.Border) == "table" then
+        draw.Color(math.floor(Colors.Border[1] or 0), math.floor(Colors.Border[2] or 0), math.floor(Colors.Border[3] or 0), math.floor(Colors.Border[4] or 255))
+        draw.OutlinedRect(math.floor(x), math.floor(y), math.floor(x + width), math.floor(y + height))
     end
 
     -- Text
-    draw.Color(table.unpack(Colors.Text))
-    draw.Text(x + (width // 2) - (txtWidth // 2), y + (height // 2) - (txtHeight // 2), label)
+    if type(Colors.Text) == "table" then
+        draw.Color(math.floor(Colors.Text[1] or 0), math.floor(Colors.Text[2] or 0), math.floor(Colors.Text[3] or 0), math.floor(Colors.Text[4] or 255))
+    end
+    draw.Text(math.floor(x + (width - txtWidth) / 2), math.floor(y + (height - txtHeight) / 2), label)
 
     if clicked then
         ImMenu.ActiveItem = nil
@@ -558,6 +593,7 @@ function ImMenu.Button(text)
     ImMenu.UpdateCursor(width, height)
     return clicked, active
 end
+
 
 ---@param id Texture
 function ImMenu.Texture(id)
@@ -628,14 +664,66 @@ function ImMenu.Slider(text, value, min, max, step)
     return value, clicked
 end
 
+-- Quadratic easing function for interpolation
+local function easeInOutQuad(t)
+    if t < 0.5 then
+        return 2 * t * t
+    else
+        return -1 + (4 - 2 * t) * t
+    end
+end
+
 -- Draws a progress bar
 ---@param value number
 ---@param min number
 ---@param max number
-function ImMenu.Progress(value, min, max)
-    local x, y = ImMenu.Cursor.X, ImMenu.Cursor.Y
+---@param interpolate boolean optional
+function ImMenu.Progress(value, min, max, interpolate)
+    interpolate = interpolate or false
+
+    local x, y = math.floor(ImMenu.Cursor.X or 0), math.floor(ImMenu.Cursor.Y or 0)
     local width, height = ImMenu.GetSize(250, 15)
-    local progressWidth = math.floor(width * (value - min) / (max - min))
+
+    -- Ensure width and height are integers and not nil
+    width = math.floor(width or 250)
+    height = math.floor(height or 15)
+
+    -- Ensure progress value is within bounds
+    value = math.max(min, math.min(max, value))
+    local targetProgressWidth = math.floor(width * (value - min) / (max - min))
+
+    -- Initialize progress tracking if needed
+    if not ImMenu.ProgressState then
+        ImMenu.ProgressState = {
+            currentWidth = targetProgressWidth,
+            lastTargetWidth = targetProgressWidth,
+            lastTick = globals.TickCount()
+        }
+    end
+
+    -- Interpolation logic
+    if interpolate then
+        local currentTick = globals.TickCount()
+        local elapsedTicks = currentTick - ImMenu.ProgressState.lastTick
+
+        -- Adjust speed based on the distance from the target
+        local distance = math.abs(targetProgressWidth - ImMenu.ProgressState.currentWidth)
+        local speed = math.max(0.5, distance / 10) -- Adjust the divisor for speed control
+
+        -- Smooth interpolation to the target value
+        ImMenu.ProgressState.currentWidth = ImMenu.ProgressState.currentWidth + (targetProgressWidth - ImMenu.ProgressState.currentWidth) * easeInOutQuad(math.min(elapsedTicks / 10, 1))
+
+        -- Update last target width and last tick for continuous interpolation
+        ImMenu.ProgressState.lastTargetWidth = targetProgressWidth
+        ImMenu.ProgressState.lastTick = currentTick
+    else
+        ImMenu.ProgressState.currentWidth = targetProgressWidth
+    end
+
+    local progressWidth = math.floor(ImMenu.ProgressState.currentWidth)
+
+    -- Ensure progressWidth is within bounds
+    progressWidth = math.max(0, math.min(progressWidth, width))
 
     -- Background
     draw.Color(UnpackColor(Colors.Item))
@@ -654,10 +742,29 @@ function ImMenu.Progress(value, min, max)
     ImMenu.UpdateCursor(width, height)
 end
 
+
+
+
+
+
+
+
 ---@param label string
 ---@param text string
 ---@return string text
 function ImMenu.TextInput(label, text)
+    -- Initialize static variables for cursor and selection
+    if not ImMenu.TextInputState then
+        ImMenu.TextInputState = {
+            cursorPos = #text,
+            blinkTimer = globals.RealTime(),
+            selecting = false,
+            selectionStart = 0,
+            selectionEnd = 0
+        }
+    end
+
+    local state = ImMenu.TextInputState
     local x, y = ImMenu.Cursor.X, ImMenu.Cursor.Y
     local txtWidth, txtHeight = draw.GetTextSize(text)
     local width, height = ImMenu.GetSize(250, txtHeight + Style.ItemPadding * 2)
@@ -672,33 +779,57 @@ function ImMenu.TextInput(label, text)
     draw.Color(UnpackColor(Colors.Border))
     draw.OutlinedRect(x, y, x + width, y + height)
 
-    -- Text
+    -- Text rendering with selection
     draw.Color(UnpackColor(Colors.Text))
-    if txtWidth > width - 2 * Style.ItemPadding then
-        local charWidth = math.ceil(txtWidth / #text)
-        local charCount = (width // charWidth) - 2
-        draw.Text(x + Style.ItemPadding, txtY, string.sub(text, -charCount))
-    else
-        draw.Text(x + Style.ItemPadding, txtY, text)
-    end
-
-    -- Cursor
-    if hovered then
+    local displayText = text
+    local cursorX = x + Style.ItemPadding + draw.GetTextSize(text:sub(1, state.cursorPos))
+    if state.selectionStart ~= state.selectionEnd then
+        local selectionText = text:sub(state.selectionStart + 1, state.selectionEnd)
+        local selectionWidth = draw.GetTextSize(selectionText)
         draw.Color(UnpackColor(Colors.Highlight))
-        local cursorX = math.min(x + txtWidth, x + width - Style.ItemPadding * 2)
-        draw.FilledRect(cursorX + Style.ItemPadding, txtY, cursorX + Style.ItemPadding + 2, txtY + txtHeight)
+        draw.FilledRect(cursorX, txtY, cursorX + selectionWidth, txtY + txtHeight)
+        draw.Color(UnpackColor(Colors.Text))
+    end
+    draw.Text(x + Style.ItemPadding, txtY, displayText)
+
+    -- Sine wave-based alpha for blinking cursor
+    local blinkPeriod = 1.5 -- Total period (1.5 seconds)
+    local timeInPeriod = (globals.RealTime() - state.blinkTimer) % blinkPeriod
+    local alpha = (math.sin((timeInPeriod / blinkPeriod) * 2 * math.pi) + 1) / 2 -- Alpha range between 0 and 1
+    local cursorAlpha = alpha < 0.5 and 255 or 0 -- Cursor is visible for 2/3 of the period
+
+    if hovered and active and cursorAlpha > 0 then
+        draw.Color(Colors.Highlight[1], Colors.Highlight[2], Colors.Highlight[3], cursorAlpha)
+        draw.FilledRect(cursorX, txtY, cursorX + 2, txtY + txtHeight)
     end
 
     -- Text Input
-    if hovered then
+    if hovered and active then
         local key = GetInput()
         if key then
             if key == KEY_BACKSPACE then
-                text = text:sub(1, -2)
+                if state.cursorPos > 0 then
+                    text = text:sub(1, state.cursorPos - 1) .. text:sub(state.cursorPos + 1)
+                    state.cursorPos = math.max(0, state.cursorPos - 1)
+                end
+            elseif key == KEY_LEFT then
+                state.cursorPos = math.max(0, state.cursorPos - 1)
+            elseif key == KEY_RIGHT then
+                state.cursorPos = math.min(#text, state.cursorPos + 1)
+            elseif key == KEY_DELETE then
+                if state.cursorPos < #text then
+                    text = text:sub(1, state.cursorPos) .. text:sub(state.cursorPos + 2)
+                end
+            elseif key == KEY_HOME then
+                state.cursorPos = 0
+            elseif key == KEY_END then
+                state.cursorPos = #text
             elseif key == KEY_SPACE then
-                text = text .. " "
+                text = text:sub(1, state.cursorPos) .. " " .. text:sub(state.cursorPos + 1)
+                state.cursorPos = state.cursorPos + 1
             elseif key == KEY_TAB then
-                text = text .. "\t"
+                text = text:sub(1, state.cursorPos) .. "\t" .. text:sub(state.cursorPos + 1)
+                state.cursorPos = state.cursorPos + 1
             else
                 local char = Input.KeyToChar(key)
                 if char then
@@ -707,48 +838,74 @@ function ImMenu.TextInput(label, text)
                     else
                         char = char:lower()
                     end
-                    text = text .. char
+                    text = text:sub(1, state.cursorPos) .. char .. text:sub(state.cursorPos + 1)
+                    state.cursorPos = state.cursorPos + 1
                 end
             end
         end
+
+        state.blinkTimer = globals.RealTime()
     end
 
     ImMenu.UpdateCursor(width, height)
     return text
 end
 
+
 ---@param selected integer
 ---@param options any[]
 ---@return integer selected
 function ImMenu.Option(selected, options)
+    -- Check if the inputs are of the correct type
+    if type(selected) ~= "number" then
+        error("Expected a number for 'selected', got " .. type(selected))
+    end
+    if type(options) ~= "table" then
+        error("Expected a table for 'options', got " .. type(options))
+    end
+
+    -- Handle empty options
+    if #options == 0 then
+        error("Options table is empty")
+    end
+
     local txtWidth, txtHeight = draw.GetTextSize("#")
     local btnSize = txtHeight + 2 * Style.ItemPadding
     local width, height = ImMenu.GetSize(250, txtHeight)
 
+    -- Begin frame for the option control
     ImMenu.PushStyle("ItemSize", { btnSize, btnSize })
     ImMenu.PushStyle("FramePadding", 0)
-    ImMenu.BeginFrame(1)
+    ImMenu.BeginFrame(ImAlign.Horizontal)
 
     -- Last Item button
-    if ImMenu.Button("<###" .. tostring(options)) then
+    if ImMenu.Button("<###prev") then
         selected = ((selected - 2) % #options) + 1
+        print("Selected previous option:", selected)
     end
 
-    -- Current Item
+    -- Current Item display
     ImMenu.PushStyle("ItemSize", { width - (2 * btnSize) - (2 * Style.ItemMargin), btnSize })
-    ImMenu.Text(tostring(options[selected]))
+    if options[selected] then
+        ImMenu.Text(tostring(options[selected]))
+    else
+        ImMenu.Text("Invalid selection")
+    end
     ImMenu.PopStyle()
 
     -- Next Item button
-    if ImMenu.Button(">###" .. tostring(options)) then
+    if ImMenu.Button(">###next") then
         selected = (selected % #options) + 1
+        print("Selected next option:", selected)
     end
 
+    -- End frame and pop styles
     ImMenu.EndFrame()
     ImMenu.PopStyle(2)
 
     return selected
 end
+
 
 ---@param text string
 ---@param items string[]
