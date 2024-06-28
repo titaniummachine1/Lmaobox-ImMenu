@@ -400,13 +400,13 @@ function ImMenu.Begin(title, visible)
 
     -- Initialize the window
     local window = Windows[title]
+    draw.SetFont(BoldFont)  -- Set the bold font before getting text size
     local titleText = ImMenu.GetLabel(title)
     local txtWidth, txtHeight = draw.GetTextSize(titleText)
     local titleHeight = txtHeight + Style.ItemPadding
     local hovered, clicked, active = ImMenu.GetInteraction(window.X, window.Y, window.W, titleHeight, title)
 
     -- Title bar
-    draw.SetFont(BoldFont)
     draw.Color(table.unpack(Colors.Title))
     draw.OutlinedRect(window.X, window.Y, window.X + window.W, window.Y + window.H)
     draw.FilledRect(window.X, window.Y, window.X + window.W, window.Y + titleHeight)
@@ -457,6 +457,7 @@ function ImMenu.Begin(title, visible)
 
     return true
 end
+
 
 
 
