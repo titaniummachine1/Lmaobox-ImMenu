@@ -1,7 +1,6 @@
 --[[
     Immediate mode menu library for Lmaobox
     Author: github.com/lnx00
-    updated by: https://github.com/titaniummachine1
 ]]
 
 -- Unload the module if it's already loaded fixes all posible bullshit that happens when immenu glitches out
@@ -103,15 +102,50 @@ local function UnpackColor(color)
     return color[1], color[2], color[3], color[4] or 255
 end
 
+-- Returns a pressed key suitable for typing (alphanumeric and punctuation)
+---@return integer?
+function GetTypingKey()
+    for i = KEY_0, KEY_Z do
+        if input.IsButtonDown(i) then
+            return i
+        end
+    end
+    for _, key in ipairs({
+        KEY_SPACE, KEY_ENTER, KEY_BACKSPACE, KEY_TAB, KEY_SEMICOLON, 
+        KEY_APOSTROPHE, KEY_COMMA, KEY_PERIOD, KEY_SLASH, KEY_BACKSLASH, 
+        KEY_MINUS, KEY_EQUAL
+    }) do
+        if input.IsButtonDown(key) then
+            return key
+        end
+    end
+    return nil
+end
+
+-- Returns a pressed key suitable for operations (function keys, arrows, etc.)
+---@return integer?
+function GetOperationKey()
+    for i = KEY_F1, KEY_F12 do
+        if input.IsButtonDown(i) then
+            return i
+        end
+    end
+    for _, key in ipairs({
+        KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_HOME, KEY_END, 
+        KEY_PAGEUP, KEY_PAGEDOWN, KEY_INSERT, KEY_DELETE, KEY_ESCAPE
+    }) do
+        if input.IsButtonDown(key) then
+            return key
+        end
+    end
+    return nil
+end
+
 ---@return integer?
 local function GetInput()
-    local key = Input.GetPressedKey()
+    local key = GetTypingKey() or GetOperationKey()
     if not key then
         lastKey.Key = 0
-        return nil
-    end
-
-    if key < KEY_0 or key > KEY_TAB then
         return nil
     end
 
@@ -743,24 +777,16 @@ function ImMenu.Progress(value, min, max, interpolate)
 end
 
 
-
-
-
-
-
-
 ---@param label string
 ---@param text string
 ---@return string text
 function ImMenu.TextInput(label, text)
-    -- Initialize static variables for cursor and selection
+    -- Initialize static variables for cursor and writing mode
     if not ImMenu.TextInputState then
         ImMenu.TextInputState = {
             cursorPos = #text,
             blinkTimer = globals.RealTime(),
-            selecting = false,
-            selectionStart = 0,
-            selectionEnd = 0
+            isWriting = false
         }
     end
 
@@ -771,40 +797,39 @@ function ImMenu.TextInput(label, text)
     local txtY = y + (height // 2) - (txtHeight // 2)
     local hovered, clicked, active = ImMenu.GetInteraction(x, y, width, height, label)
 
+    -- Toggle writing mode
+    if clicked then
+        state.isWriting = not state.isWriting
+    elseif MouseHelper:Pressed() and not hovered and state.isWriting then
+        state.isWriting = false
+    end
+
     -- Background
-    ImMenu.InteractionColor(hovered, active)
+    ImMenu.InteractionColor(hovered, state.isWriting)
     draw.FilledRect(x, y, x + width, y + height)
 
     -- Border
     draw.Color(UnpackColor(Colors.Border))
     draw.OutlinedRect(x, y, x + width, y + height)
 
-    -- Text rendering with selection
+    -- Text rendering
     draw.Color(UnpackColor(Colors.Text))
     local displayText = text
     local cursorX = x + Style.ItemPadding + draw.GetTextSize(text:sub(1, state.cursorPos))
-    if state.selectionStart ~= state.selectionEnd then
-        local selectionText = text:sub(state.selectionStart + 1, state.selectionEnd)
-        local selectionWidth = draw.GetTextSize(selectionText)
-        draw.Color(UnpackColor(Colors.Highlight))
-        draw.FilledRect(cursorX, txtY, cursorX + selectionWidth, txtY + txtHeight)
-        draw.Color(UnpackColor(Colors.Text))
-    end
     draw.Text(x + Style.ItemPadding, txtY, displayText)
 
-    -- Sine wave-based alpha for blinking cursor
-    local blinkPeriod = 1.5 -- Total period (1.5 seconds)
-    local timeInPeriod = (globals.RealTime() - state.blinkTimer) % blinkPeriod
-    local alpha = (math.sin((timeInPeriod / blinkPeriod) * 2 * math.pi) + 1) / 2 -- Alpha range between 0 and 1
-    local cursorAlpha = alpha < 0.5 and 255 or 0 -- Cursor is visible for 2/3 of the period
-
-    if hovered and active and cursorAlpha > 0 then
-        draw.Color(Colors.Highlight[1], Colors.Highlight[2], Colors.Highlight[3], cursorAlpha)
-        draw.FilledRect(cursorX, txtY, cursorX + 2, txtY + txtHeight)
+    -- Simple blinking cursor
+    if state.isWriting then
+        local blinkPeriod = 1.0
+        local shouldShowCursor = (globals.RealTime() - state.blinkTimer) % blinkPeriod < blinkPeriod / 2
+        if shouldShowCursor then
+            draw.Color(UnpackColor(Colors.Highlight))
+            draw.FilledRect(cursorX, txtY, cursorX + 2, txtY + txtHeight)
+        end
     end
 
     -- Text Input
-    if hovered and active then
+    if state.isWriting then
         local key = GetInput()
         if key then
             if key == KEY_BACKSPACE then
@@ -842,15 +867,13 @@ function ImMenu.TextInput(label, text)
                     state.cursorPos = state.cursorPos + 1
                 end
             end
+            state.blinkTimer = globals.RealTime()  -- Reset blink timer on input
         end
-
-        state.blinkTimer = globals.RealTime()
     end
 
     ImMenu.UpdateCursor(width, height)
     return text
 end
-
 
 ---@param selected integer
 ---@param options any[]
