@@ -377,6 +377,9 @@ function ImMenu.EndFrame()
     return frame
 end
 
+-- Load a bold font
+local BoldFont = draw.CreateFont("Verdana Bold", 18, 800)
+
 -- Begins a new window
 ---@param title string
 ---@param visible? boolean
@@ -396,7 +399,6 @@ function ImMenu.Begin(title, visible)
     end
 
     -- Initialize the window
-    draw.SetFont(Style.Font)
     local window = Windows[title]
     local titleText = ImMenu.GetLabel(title)
     local txtWidth, txtHeight = draw.GetTextSize(titleText)
@@ -404,13 +406,19 @@ function ImMenu.Begin(title, visible)
     local hovered, clicked, active = ImMenu.GetInteraction(window.X, window.Y, window.W, titleHeight, title)
 
     -- Title bar
+    draw.SetFont(BoldFont)
     draw.Color(table.unpack(Colors.Title))
     draw.OutlinedRect(window.X, window.Y, window.X + window.W, window.Y + window.H)
     draw.FilledRect(window.X, window.Y, window.X + window.W, window.Y + titleHeight)
 
-    -- Title text
-    draw.Color(table.unpack(Colors.Text))
-    draw.Text(window.X + (window.W // 2) - (txtWidth // 2), window.Y + (20 // 2) - (txtHeight // 2), titleText)
+    -- Title text with shadow and bold font
+    local titleX = window.X + (window.W // 2) - (txtWidth // 2)
+    local titleY = window.Y + (titleHeight // 2) - (txtHeight // 2)
+
+    draw.TextShadow(titleX + 1, titleY + 1, titleText)  -- Draw shadow
+
+    draw.Color(255, 255, 255, 255)  -- Dark text color
+    draw.Text(titleX, titleY, titleText)
 
     -- Background
     draw.Color(table.unpack(Colors.Window))
@@ -443,13 +451,12 @@ function ImMenu.Begin(title, visible)
 
     ImMenu.BeginFrame()
 
-    -- Store and pish the window
+    -- Store and push the window
     Windows[title] = window
     WindowStack:push(window)
 
     return true
 end
-
 
 
 
