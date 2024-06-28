@@ -1,6 +1,6 @@
 # ImMenu for Lmaobox
 
-![image](https://github.com/titaniummachine1/Lmaobox-ImMenu/assets/78664175/fecf054e-625d-4a76-a0ba-bd2802881c51)
+![image](https://github.com/titaniummachine1/Lmaobox-ImMenu/assets/78664175/2c69ef67-e36c-4deb-95b3-195819867215)
 
 
 ImMenu is an immediate mode menu library for Lmaobox. The syntax is similar to ImGui and is very easy to use. You can easily customize menu styles and colors using the style stack.
