@@ -322,13 +322,16 @@ end
 
 function ImMenu.Separator()
     local x, y = ImMenu.Cursor.X, ImMenu.Cursor.Y
-    local width, height = ImMenu.GetSize(250, Style.ItemMargin * 2)
+    local currentWindow = ImMenu.GetCurrentWindow()
+    local width = currentWindow.W - Style.FramePadding * 2
+    local height = Style.ItemMargin * 2
 
     draw.Color(UnpackColor(Colors.WindowBorder))
     draw.Line(x, y + height // 2, x + width, y + height // 2)
 
     ImMenu.UpdateCursor(width, height)
 end
+
 
 -- Begins a new frame
 ---@param align? integer
@@ -401,54 +404,53 @@ function ImMenu.Begin(title, visible)
     local hovered, clicked, active = ImMenu.GetInteraction(window.X, window.Y, window.W, titleHeight, title)
 
     -- Title bar
-    if type(Colors.Title) == "table" then
-        draw.Color(math.floor(Colors.Title[1]), math.floor(Colors.Title[2]), math.floor(Colors.Title[3]), math.floor(Colors.Title[4]))
-    end
-    draw.OutlinedRect(math.floor(window.X), math.floor(window.Y), math.floor(window.X + window.W), math.floor(window.Y + window.H))
-    draw.FilledRect(math.floor(window.X), math.floor(window.Y), math.floor(window.X + window.W), math.floor(window.Y + titleHeight))
+    draw.Color(table.unpack(Colors.Title))
+    draw.OutlinedRect(window.X, window.Y, window.X + window.W, window.Y + window.H)
+    draw.FilledRect(window.X, window.Y, window.X + window.W, window.Y + titleHeight)
 
     -- Title text
-    if type(Colors.Text) == "table" then
-        draw.Color(math.floor(Colors.Text[1]), math.floor(Colors.Text[2]), math.floor(Colors.Text[3]), math.floor(Colors.Text[4]))
-    end
-    draw.Text(math.floor(window.X + (window.W - txtWidth) / 2), math.floor(window.Y + (titleHeight - txtHeight) / 2), titleText)
+    draw.Color(table.unpack(Colors.Text))
+    draw.Text(window.X + (window.W // 2) - (txtWidth // 2), window.Y + (20 // 2) - (txtHeight // 2), titleText)
 
     -- Background
-    if type(Colors.Window) == "table" then
-        draw.Color(math.floor(Colors.Window[1]), math.floor(Colors.Window[2]), math.floor(Colors.Window[3]), math.floor(Colors.Window[4]))
-    end
-    draw.FilledRect(math.floor(window.X), math.floor(window.Y + titleHeight), math.floor(window.X + window.W), math.floor(window.Y + window.H + titleHeight))
+    draw.Color(table.unpack(Colors.Window))
+    draw.FilledRect(window.X, window.Y + titleHeight, window.X + window.W, window.Y + window.H + titleHeight)
 
     -- Border
-    if Style.WindowBorder and type(Colors.WindowBorder) == "table" then
-        draw.Color(math.floor(Colors.WindowBorder[1]), math.floor(Colors.WindowBorder[2]), math.floor(Colors.WindowBorder[3]), math.floor(Colors.WindowBorder[4]))
-        draw.OutlinedRect(math.floor(window.X), math.floor(window.Y), math.floor(window.X + window.W), math.floor(window.Y + window.H + titleHeight))
-        draw.Line(math.floor(window.X), math.floor(window.Y + titleHeight), math.floor(window.X + window.W), math.floor(window.Y + titleHeight))
+    if Style.WindowBorder then
+        draw.Color(UnpackColor(Colors.WindowBorder))
+        draw.OutlinedRect(window.X, window.Y, window.X + window.W, window.Y + window.H + titleHeight)
+        draw.Line(window.X, window.Y + titleHeight, window.X + window.W, window.Y + titleHeight)
     end
 
     -- Mouse drag
-    if active then
-        local mX, mY = table.unpack(input.GetMousePos())
-        if clicked then
-            dragPos = { X = mX - window.X, Y = mY - window.Y }
-        end
+    local mX, mY = table.unpack(input.GetMousePos())
+    if clicked then
+        window.DragPos = { X = mX - window.X, Y = mY - window.Y }
+        window.IsDragging = true
+    elseif not input.IsButtonDown(MOUSE_LEFT) and not clicked then
+        window.IsDragging = false
+    end
 
-        window.X = math.clamp(math.floor(mX - dragPos.X), 0, screenWidth - window.W)
-        window.Y = math.clamp(math.floor(mY - dragPos.Y), 0, screenHeight - window.H - titleHeight)
+    if window.IsDragging then
+        window.X = math.clamp(mX - window.DragPos.X, 0, screenWidth - window.W)
+        window.Y = math.clamp(mY - window.DragPos.Y, 0, screenHeight - window.H - titleHeight)
     end
 
     -- Update the cursor
-    ImMenu.Cursor.X = math.floor(window.X)
-    ImMenu.Cursor.Y = math.floor(window.Y + titleHeight)
+    ImMenu.Cursor.X = window.X
+    ImMenu.Cursor.Y = window.Y + titleHeight
 
     ImMenu.BeginFrame()
 
-    -- Store and push the window
+    -- Store and pish the window
     Windows[title] = window
     WindowStack:push(window)
 
     return true
 end
+
+
 
 
 
@@ -612,7 +614,7 @@ function ImMenu.Texture(id)
     ImMenu.UpdateCursor(width, height)
 end
 
--- Draws a slider that changes a value
+-- Draws a slider that changes a value with fancy visual effects and text shadow
 ---@param text string
 ---@param value number
 ---@param min number
@@ -628,6 +630,9 @@ function ImMenu.Slider(text, value, min, max, step)
     local sliderWidth = math.floor(width * (value - min) / (max - min))
     local hovered, clicked, active = ImMenu.GetInteraction(x, y, width, height, text)
 
+    -- Ensure sliderWidth is within bounds
+    sliderWidth = math.max(0, math.min(sliderWidth, width))
+
     -- Background
     ImMenu.InteractionColor(hovered, active)
     draw.FilledRect(x, y, x + width, y + height)
@@ -642,9 +647,21 @@ function ImMenu.Slider(text, value, min, max, step)
         draw.OutlinedRect(x, y, x + width, y + height)
     end
 
-    -- Text
-    draw.Color(UnpackColor(Colors.Text))
+    -- Add a glow effect at the end of the slider
+    if sliderWidth > 1 then
+        draw.Color(255, 255, 255, 150)
+        draw.FilledRect(x + sliderWidth - 2, y - 2, x + sliderWidth + 2, y + height + 2)
+    end
+
+
+    -- Text with shadow
+    draw.Color(0, 0, 0, 150)  -- Shadow color
+    draw.TextShadow(x + (width // 2) - (txtWidth // 2) + 1, y + (height // 2) - (txtHeight // 2) + 1, label)  -- Draw shadow
+
+    -- Higher contrast text color
+    draw.Color(255, 255, 255, 255)  -- White color for the text
     draw.Text(x + (width // 2) - (txtWidth // 2), y + (height // 2) - (txtHeight // 2), label)
+
 
     -- Update Value
     if active then
@@ -665,6 +682,15 @@ function ImMenu.Slider(text, value, min, max, step)
     return value, clicked
 end
 
+
+
+
+
+
+
+
+
+
 -- Quadratic easing function for interpolation
 local function easeInOutQuad(t)
     if t < 0.5 then
@@ -674,7 +700,12 @@ local function easeInOutQuad(t)
     end
 end
 
--- Draws a progress bar
+-- Unpack a color from table
+local function UnpackColor(color)
+    return math.floor(color[1]), math.floor(color[2]), math.floor(color[3]), math.floor(color[4] or 255)
+end
+
+-- Draws a progress bar with fancy visual effects
 ---@param value number
 ---@param min number
 ---@param max number
@@ -731,7 +762,7 @@ function ImMenu.Progress(value, min, max, interpolate)
     draw.FilledRect(x, y, x + width, y + height)
 
     -- Progress
-    draw.Color(UnpackColor(Colors.Highlight))
+    draw.Color(0, 255, 0, 255)  -- Solid green color
     draw.FilledRect(x, y, x + progressWidth, y + height)
 
     -- Border
@@ -740,14 +771,24 @@ function ImMenu.Progress(value, min, max, interpolate)
         draw.OutlinedRect(x, y, x + width, y + height)
     end
 
+    -- Add a thinner glow effect at the end of the progress bar
+    if progressWidth > 0 then
+        draw.Color(255, 255, 255, 150)
+        draw.FilledRect(x + progressWidth - 1, y - 1, x + progressWidth + 1, y + height + 1)
+    end
+
     ImMenu.UpdateCursor(width, height)
 end
 
 
+
 ---@param label string
 ---@param text string
+---@param charLimit? integer
 ---@return string text
-function ImMenu.TextInput(label, text)
+function ImMenu.TextInput(label, text, charLimit)
+    charLimit = charLimit or 50  -- Set default character limit to 50
+
     -- Initialize static variables for cursor and writing mode
     if not ImMenu.TextInputState then
         ImMenu.TextInputState = {
@@ -760,7 +801,9 @@ function ImMenu.TextInput(label, text)
     local state = ImMenu.TextInputState
     local x, y = ImMenu.Cursor.X, ImMenu.Cursor.Y
     local txtWidth, txtHeight = draw.GetTextSize(text)
-    local width, height = ImMenu.GetSize(250, txtHeight + Style.ItemPadding * 2)
+    local defaultWidth, defaultHeight = 250, txtHeight + Style.ItemPadding * 2
+    local width = math.max(defaultWidth, txtWidth + Style.ItemPadding * 2)
+    local height = defaultHeight
     local txtY = y + (height // 2) - (txtHeight // 2)
     local hovered, clicked, active = ImMenu.GetInteraction(x, y, width, height, label)
 
@@ -770,6 +813,10 @@ function ImMenu.TextInput(label, text)
     elseif MouseHelper:Pressed() and not hovered and state.isWriting then
         state.isWriting = false
     end
+
+    -- Adjust the width dynamically based on text size
+    txtWidth, txtHeight = draw.GetTextSize(text)
+    width = math.max(defaultWidth, txtWidth + Style.ItemPadding * 2)
 
     -- Background
     ImMenu.InteractionColor(hovered, state.isWriting)
@@ -817,14 +864,18 @@ function ImMenu.TextInput(label, text)
             elseif key == KEY_END then
                 state.cursorPos = #text
             elseif key == KEY_SPACE then
-                text = text:sub(1, state.cursorPos) .. " " .. text:sub(state.cursorPos + 1)
-                state.cursorPos = state.cursorPos + 1
+                if #text < charLimit then
+                    text = text:sub(1, state.cursorPos) .. " " .. text:sub(state.cursorPos + 1)
+                    state.cursorPos = state.cursorPos + 1
+                end
             elseif key == KEY_TAB then
-                text = text:sub(1, state.cursorPos) .. "\t" .. text:sub(state.cursorPos + 1)
-                state.cursorPos = state.cursorPos + 1
+                if #text < charLimit then
+                    text = text:sub(1, state.cursorPos) .. "\t" .. text:sub(state.cursorPos + 1)
+                    state.cursorPos = state.cursorPos + 1
+                end
             else
                 local char = Input.KeyToChar(key)
-                if char then
+                if char and #text < charLimit then
                     if input.IsButtonDown(KEY_LSHIFT) then
                         char = char:upper()
                     else
@@ -838,9 +889,11 @@ function ImMenu.TextInput(label, text)
         end
     end
 
+    -- Adjust cursor for the next item
     ImMenu.UpdateCursor(width, height)
     return text
 end
+
 
 ---@param selected integer
 ---@param options any[]
