@@ -102,26 +102,6 @@ local function UnpackColor(color)
     return color[1], color[2], color[3], color[4] or 255
 end
 
--- Returns a pressed key suitable for typing (alphanumeric and punctuation)
----@return integer?
-function GetTypingKey()
-    for i = KEY_0, KEY_Z do
-        if input.IsButtonDown(i) then
-            return i
-        end
-    end
-    for _, key in ipairs({
-        KEY_SPACE, KEY_ENTER, KEY_BACKSPACE, KEY_TAB, KEY_SEMICOLON, 
-        KEY_APOSTROPHE, KEY_COMMA, KEY_PERIOD, KEY_SLASH, KEY_BACKSLASH, 
-        KEY_MINUS, KEY_EQUAL
-    }) do
-        if input.IsButtonDown(key) then
-            return key
-        end
-    end
-    return nil
-end
-
 -- Returns a pressed key suitable for operations (function keys, arrows, etc.)
 ---@return integer?
 function GetOperationKey()
@@ -143,7 +123,7 @@ end
 
 ---@return integer?
 local function GetInput()
-    local key = GetTypingKey() or GetOperationKey()
+    local key = Input.GetPressedKey() or GetOperationKey()
     if not key then
         lastKey.Key = 0
         return nil
@@ -494,44 +474,31 @@ function ImMenu.DrawLate(func)
     table.insert(LateDrawList, func)
 end
 
-function ImMenu.Popup(x, y, func, options)
-    options = options or {}
-    local framePadding = options.framePadding or 0
-    local itemMargin = options.itemMargin or 0
-
+---@param x integer
+---@param y integer
+---@param func function
+function ImMenu.Popup(x, y, func)
     ImMenu.DrawLate(function()
-        ImMenu.inPopup = true
+        inPopup = true
 
-        -- Ensure the popup stays within screen bounds
-        local screenWidth, screenHeight = draw.GetScreenSize()
-        ImMenu.Cursor.X = math.max(0, math.min(math.floor(x), screenWidth - 1))
-        ImMenu.Cursor.Y = math.max(0, math.min(math.floor(y), screenHeight - 1))
+        -- Prepare cursor
+        ImMenu.Cursor.X = x
+        ImMenu.Cursor.Y = y
 
-        ImMenu.PushStyle("FramePadding", framePadding)
-        ImMenu.PushStyle("ItemMargin", itemMargin)
+        -- Draw the popup | TODO: Add a popup frame background
+        ImMenu.PushStyle("FramePadding", 0)
+        ImMenu.PushStyle("ItemMargin", 0)
         ImMenu.BeginFrame()
-
-        local success, errorMsg = pcall(func)
-        if not success then
-            ImMenu.Text("Error in popup: " .. tostring(errorMsg))
-        end
-
+        func()
         local frame = ImMenu.EndFrame()
         ImMenu.PopStyle(2)
 
-        -- Ensure frame dimensions are integers
-        frame.X = math.floor(frame.X)
-        frame.Y = math.floor(frame.Y)
-        frame.W = math.floor(frame.W)
-        frame.H = math.floor(frame.H)
-
-        -- Check interaction to close popup
-        local hovered, clicked, active = ImMenu.GetInteraction(frame.X, frame.Y, frame.W, frame.H, "popup")
-        if frame and (not hovered and clicked or input.IsButtonPressed(KEY_ESCAPE)) then
+        -- Close the popup if clicked outside of it
+        if not Input.MouseInBounds(frame.X, frame.Y, frame.X + frame.W, frame.Y + frame.H) and MouseHelper:Pressed() then
             ImMenu.ActivePopup = nil
         end
 
-        ImMenu.inPopup = false
+        inPopup = false
     end)
 end
 
