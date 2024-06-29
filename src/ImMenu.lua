@@ -980,9 +980,11 @@ function ImMenu.List(text, items)
     ImMenu.PopStyle(2)
 end
 
+
 ---@param text string
----@param selected integer
+---@param selected table
 ---@param options string[]
+---@return table selected
 function ImMenu.Combo(text, selected, options)
     local txtWidth, txtHeight = draw.GetTextSize(text)
     local width, height = ImMenu.GetSize(250, txtHeight + Style.ItemPadding * 2)
@@ -999,9 +1001,17 @@ function ImMenu.Combo(text, selected, options)
             ImMenu.PushStyle("ItemSize", { width, height })
 
             for i, option in ipairs(options) do
+                local isSelected = selected[i] or false
+                if isSelected then
+                    ImMenu.PushColor("Item", Colors.ItemActive) -- Highlight selected option
+                end
+
                 if ImMenu.Button(tostring(option)) then
-                    selected = i
-                    ImMenu.ActivePopup = nil
+                    selected[i] = not selected[i]
+                end
+
+                if isSelected then
+                    ImMenu.PopColor()
                 end
             end
 
@@ -1013,6 +1023,12 @@ function ImMenu.Combo(text, selected, options)
 
     return selected
 end
+
+
+
+
+
+
 
 ---@param tabs string[]
 ---@param currentTab integer
