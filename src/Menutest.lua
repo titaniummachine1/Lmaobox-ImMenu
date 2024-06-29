@@ -62,10 +62,14 @@ end
 -- Function to handle nested frames and toggles
 local function nestedFramesAndToggles()
     ImMenu.Text("Nested Frames:")
+
+    -- Outer frame with title (will have background)
+    ImMenu.BeginFrame("Outer Frame")
+    ImMenu.Text("This frame has a title and background")
+
+    -- Inner frame without title (no background)
     ImMenu.BeginFrame()
-    ImMenu.Text("Frame 1")
-    ImMenu.BeginFrame()
-    ImMenu.Text("Nested Frame")
+    ImMenu.Text("This inner frame has no title or background")
     if ImMenu.Button(menuState.showPopupContent and "Hide Content" or "Show Content") then
         menuState.showPopupContent = not menuState.showPopupContent
     end
@@ -74,8 +78,22 @@ local function nestedFramesAndToggles()
         ImMenu.Text("Slider value: " .. menuState.sliderValue)
     end
     ImMenu.EndFrame()
+    
+    -- Another inner frame with title (will have background)
+    ImMenu.BeginFrame("Inner Titled Frame")
+    ImMenu.Text("This inner frame has a title and its own background")
+    menuState.exampleCheckbox = ImMenu.Checkbox("Example Checkbox", menuState.exampleCheckbox)
     ImMenu.EndFrame()
+    
+    ImMenu.EndFrame()
+    
     ImMenu.Space(10)
+    
+    -- Separate frame with title (will have background)
+    ImMenu.BeginFrame("Separate Frame")
+    ImMenu.Text("This is a separate frame with a title and background")
+    menuState.sliderValue = ImMenu.Slider("Adjust Value", menuState.sliderValue, 0, 100)
+    ImMenu.EndFrame()
 end
 
 -- Function to handle advanced elements

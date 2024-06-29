@@ -334,22 +334,82 @@ end
 
 
 -- Begins a new frame
+---@param titleOrAlign string|integer
 ---@param align? integer
-function ImMenu.BeginFrame(align)
+function ImMenu.BeginFrame(titleOrAlign, align)
+    local title = nil
+    if type(titleOrAlign) == "string" then
+        title = titleOrAlign
+    elseif type(titleOrAlign) == "number" then
+        align = titleOrAlign
+    end
     align = align or 0
 
-    FrameStack:push({ X = ImMenu.Cursor.X, Y = ImMenu.Cursor.Y, W = 0, H = 0, A = align })
+    local frame = {
+        X = ImMenu.Cursor.X,
+        Y = ImMenu.Cursor.Y,
+        W = 0,
+        H = 0,
+        A = align,
+        Title = title,
+        Children = {}
+    }
 
+    FrameStack:push(frame)
+    
     -- Apply padding
     ImMenu.Cursor.X = ImMenu.Cursor.X + Style.FramePadding
     ImMenu.Cursor.Y = ImMenu.Cursor.Y + Style.FramePadding
+
+    -- Draw title if provided
+    if title then
+        local txtWidth, txtHeight = draw.GetTextSize(title)
+        frame.TitleHeight = txtHeight + Style.FramePadding * 2
+
+        -- Calculate frame width to the right side of the menu
+        local currentWindow = ImMenu.GetCurrentWindow()
+        local frameWidth = currentWindow.W - Style.FramePadding * 4
+
+        -- Draw title background
+        draw.Color(UnpackColor(Colors.Title))
+        draw.FilledRect(frame.X, frame.Y, frame.X + frameWidth, frame.Y + frame.TitleHeight)
+
+        -- Draw title text centered
+        draw.Color(UnpackColor(Colors.Text))
+        local textX = frame.X + (frameWidth - txtWidth) // 2
+        draw.Text(textX, frame.Y + Style.FramePadding, title)
+
+        -- Draw frame background
+        draw.Color(UnpackColor(Colors.Title))
+        draw.FilledRect(frame.X, frame.Y + frame.TitleHeight, frame.X + frameWidth, frame.Y + frame.H + frame.TitleHeight)
+
+        ImMenu.Space(5)
+        ImMenu.Cursor.Y = ImMenu.Cursor.Y + frame.TitleHeight + Style.ItemMargin
+    end
 end
+
 
 -- Ends the current frame
 ---@return ImFrame frame
 function ImMenu.EndFrame()
     ---@type ImFrame
     local frame = FrameStack:pop()
+
+    -- Process children
+    for _, child in ipairs(frame.Children) do
+        child.W = math.max(child.W, ImMenu.Cursor.X - child.X)
+        child.H = ImMenu.Cursor.Y - child.Y
+        frame.W = math.max(frame.W, child.W)
+        frame.H = frame.H + child.H + Style.ItemMargin
+
+        -- Draw child frame background and border
+        draw.Color(UnpackColor(Colors.Item))
+        draw.FilledRect(child.X, child.Y, child.X + child.W, child.Y + child.H)
+        if Style.FrameBorder then
+            draw.Color(UnpackColor(Colors.FrameBorder))
+            draw.OutlinedRect(child.X, child.Y, child.X + child.W, child.Y + child.H)
+        end
+    end
 
     ImMenu.Cursor.X = frame.X
     ImMenu.Cursor.Y = frame.Y
@@ -363,12 +423,6 @@ function ImMenu.EndFrame()
         -- Vertical
         frame.H = frame.H + Style.FramePadding * 2
         frame.W = frame.W + Style.FramePadding - Style.ItemMargin
-    end
-
-    -- Border
-    if Style.FrameBorder then
-        draw.Color(UnpackColor(Colors.FrameBorder))
-        draw.OutlinedRect(frame.X, frame.Y, frame.X + frame.W, frame.Y + frame.H)
     end
 
     -- Update the cursor
@@ -457,9 +511,6 @@ function ImMenu.Begin(title, visible)
 
     return true
 end
-
-
-
 
 
 -- Ends the current window
