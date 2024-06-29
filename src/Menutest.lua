@@ -1,4 +1,3 @@
-
 -- Unload the module if it's already loaded
 if package.loaded["ImMenu"] then
     package.loaded["ImMenu"] = nil
@@ -24,7 +23,14 @@ local menuState = {
     animationProgress = 0,
     pulsateTextColor = {255, 255, 255, 255},
     rainbowText = false,
-    rainbowColor = {255, 0, 0, 255}
+    rainbowColor = {255, 0, 0, 255},
+    weaponSelections = {},
+    keybind = 0,
+    keybindName = "Always On",
+    keybind2 = 0,
+    keybindName2 = "Always On",
+    isKeybindActive = false,
+    isKeybindActive2 = false
 }
 
 -- Function to load a custom font
@@ -52,7 +58,6 @@ local function basicElements()
     ImMenu.Text("You entered: " .. menuState.inputText)
     ImMenu.Space(10)
 end
-
 
 -- Function to handle nested frames and toggles
 local function nestedFramesAndToggles()
@@ -110,6 +115,21 @@ local function advancedElements()
 
     ImMenu.Space(10)
 
+    -- Example keybind usage
+    menuState.keybind, menuState.keybindName, menuState.isKeybindActive = ImMenu.Keybind("first Keybind", menuState.keybind, menuState.keybindName)
+    menuState.keybind2, menuState.keybindName2, menuState.isKeybindActive2 = ImMenu.Keybind("Another Keybind", menuState.keybind2 or 0, menuState.keybindName2 or "Always On")
+
+    -- Print to console when keybind is active
+    if menuState.isKeybindActive then
+        print("Example Keybind activated")
+    end
+
+    if menuState.isKeybindActive2 then
+        print("Another Keybind activated")
+    end
+
+    ImMenu.Space(10)
+
     nestedFramesAndToggles()
 
     ImMenu.List("Dynamic List", {
@@ -119,7 +139,6 @@ local function advancedElements()
     })
     ImMenu.Space(10)
 end
-
 
 -- Function to handle color adjustment elements
 local function colorAdjustment()
@@ -208,7 +227,6 @@ local function testAllElements()
         ImMenu.End()
     end
 
-
     if menuState.showExtraWindow then
         if ImMenu.Begin("Extra Window") then
             ImMenu.Text("This is an extra window!")
@@ -242,7 +260,6 @@ local function doDraw()
         ImMenu.Text(string.format("Time: %.1f", globals.RealTime()))
         ImMenu.End()
     end
-    
 end
 
 callbacks.Unregister("Draw", "ImMenu_TestSuite")
