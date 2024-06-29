@@ -116,15 +116,15 @@ local function advancedElements()
     ImMenu.Space(10)
 
     -- Example keybind usage
-    menuState.keybind, menuState.keybindName, menuState.isKeybindActive = ImMenu.Keybind("first Keybind", menuState.keybind, menuState.keybindName)
-    menuState.keybind2, menuState.keybindName2, menuState.isKeybindActive2 = ImMenu.Keybind("Another Keybind", menuState.keybind2 or 0, menuState.keybindName2 or "Always On")
+    ImMenu.Keybind("First Keybind")
+    ImMenu.Keybind("Another Keybind")
 
     -- Print to console when keybind is active
-    if menuState.isKeybindActive then
-        print("Example Keybind activated")
+    if ImMenu.GetKeybind("First Keybind") then
+        print("First Keybind activated")
     end
 
-    if menuState.isKeybindActive2 then
+    if ImMenu.GetKeybind("Another Keybind") then
         print("Another Keybind activated")
     end
 

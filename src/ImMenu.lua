@@ -1061,11 +1061,32 @@ local keybindActiveStates = {}
 local keybindModeSelection = {}
 
 ---@param text string
----@param keybind number
----@param keybindName string
----@return number keybind, string keybindName, boolean isActive
-function ImMenu.Keybind(text, keybind, keybindName)
-    keybindName = keybindName or "Always On"
+function ImMenu.GetKeybind(text)
+    local mode = keybindModes[text]
+    local keybind = keybindStates[text] and GetPressedkeyAndMouse() or 0
+
+    if mode == "Always On" then
+        return true
+    elseif mode == "Always Off" then
+        return false
+    elseif mode == "Press to Toggle" then
+        if input.IsButtonDown(keybind) and not bindTimers[text .. "_Toggle"] then
+            keybindActiveStates[text] = not keybindActiveStates[text]
+            bindTimers[text .. "_Toggle"] = os.clock() + 0.25
+        end
+        if bindTimers[text .. "_Toggle"] and os.clock() > bindTimers[text .. "_Toggle"] then
+            bindTimers[text .. "_Toggle"] = nil
+        end
+        return keybindActiveStates[text]
+    elseif mode == "Hold to Use" then
+        return input.IsButtonDown(keybind)
+    end
+
+    return false
+end
+
+---@param text string
+function ImMenu.Keybind(text)
     local x, y = ImMenu.Cursor.X, ImMenu.Cursor.Y
     local defaultWidth, height = ImMenu.GetSize(250, 25)
 
@@ -1073,7 +1094,7 @@ function ImMenu.Keybind(text, keybind, keybindName)
     if not bindTimers[text] then
         bindTimers[text] = 0
         bindDelays[text] = 0.25  -- Delay of 0.25 seconds
-        keybindStates[text] = keybindName
+        keybindStates[text] = "Always On"
         keybindModes[text] = "Always On"
         keybindActiveStates[text] = true
         keybindModeSelection[text] = false
@@ -1096,7 +1117,7 @@ function ImMenu.Keybind(text, keybind, keybindName)
 
     -- Border
     if Style.ButtonBorder then
-        draw.Color(UnpackColor(Colors.Border))
+        draw.Color(UnpackColor(Colors.Highlight))
         draw.OutlinedRect(x, y, x + width, y + height)
     end
 
@@ -1112,13 +1133,11 @@ function ImMenu.Keybind(text, keybind, keybindName)
             if pressedKey then
                 if pressedKey == KEY_ESCAPE then
                     -- Reset keybind if the Escape key is pressed
-                    keybind = 0
                     keybindStates[text] = "Always On"
                     keybindModes[text] = "Always On"
                     Notify.Simple("Keybind Success", "Bound Key: " .. keybindStates[text], 2)
                 else
                     -- Update keybind with the pressed key
-                    keybind = pressedKey
                     keybindStates[text] = Input.GetKeyName(pressedKey)
                     Notify.Simple("Keybind Success", "Bound Key: " .. keybindStates[text], 2)
                 end
@@ -1149,23 +1168,6 @@ function ImMenu.Keybind(text, keybind, keybindName)
         end)
     end
 
-    -- Handle keybind modes
-    if keybindModes[text] == "Always On" then
-        keybindActiveStates[text] = true
-    elseif keybindModes[text] == "Always Off" then
-        keybindActiveStates[text] = false
-    elseif keybindModes[text] == "Press to Toggle" then
-        if input.IsButtonDown(keybind) and not bindTimers[text .. "_Toggle"] then
-            keybindActiveStates[text] = not keybindActiveStates[text]
-            bindTimers[text .. "_Toggle"] = os.clock() + 0.25
-        end
-        if bindTimers[text .. "_Toggle"] and os.clock() > bindTimers[text .. "_Toggle"] then
-            bindTimers[text .. "_Toggle"] = nil
-        end
-    elseif keybindModes[text] == "Hold to Use" then
-        keybindActiveStates[text] = input.IsButtonDown(keybind)
-    end
-
     -- Display the current keybind name and mode
     label = text .. ": " .. displayLabel .. " (" .. keybindModes[text] .. ")"
     txtWidth, txtHeight = draw.GetTextSize(label)
@@ -1173,8 +1175,8 @@ function ImMenu.Keybind(text, keybind, keybindName)
     draw.Text(x + (width // 2) - (txtWidth // 2), y + (height // 2) - (txtHeight // 2), label)
 
     ImMenu.UpdateCursor(width, height)
-    return keybind, keybindStates[text], keybindActiveStates[text]
 end
+
 
 lnxLib.UI.Notify.Simple("ImMenu loaded", string.format("Version: %.2f", ImMenu.GetVersion()))
 
