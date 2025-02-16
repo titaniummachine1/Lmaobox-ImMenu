@@ -9,13 +9,14 @@ if package.loaded["ImMenu"] then
     package.loaded["ImMenu"] = nil
 end
 
+--globaly defined lnxlib needs to be unloaded before we load fresh one/ could be not loaded before thats why if check
 if UnloadLib ~= nil then UnloadLib() end
 
 -- Import lnxLib
 ---@type boolean, lnxLib
 local libLoaded, lnxLib = pcall(require, "lnxLib")
 assert(libLoaded, "lnxLib not found, please install it!")
-assert(lnxLib.GetVersion() >= 0.94, "lnxLib version is too old, please update it!")
+assert(lnxLib.GetVersion() >= 1.000, "lnxLib version is too old, please update it!")
 
 local Fonts, Notify = lnxLib.UI.Fonts, lnxLib.UI.Notify
 local KeyHelper, Input, Timer = lnxLib.Utils.KeyHelper, lnxLib.Utils.Input, lnxLib.Utils.Timer
@@ -1066,19 +1067,19 @@ function ImMenu.Combo(text, selected, options)
     return selected
 end
 
----@param tabs string[]
----@param currentTab integer
----@return integer currentTab
+---@param tabs table<string, boolean>
+---@param currentTab string
+---@return string currentTab
 function ImMenu.TabControl(tabs, currentTab)
-    ImMenu.PushStyle("FramePadding", 0)
-    ImMenu.PushStyle("ItemSize", { 100, 25 })
-    ImMenu.PushStyle("Spacing", 0)
+    ImMenu.PushStyle("FramePadding", 5)
+    ImMenu.PushStyle("ItemSize", {100, 25})
+    ImMenu.PushStyle("Spacing", {5, 5})
     ImMenu.BeginFrame(1)
 
-    -- Items
-    for i, item in ipairs(tabs) do
-        if ImMenu.Button(tostring(item)) then
-            currentTab = i
+   -- Items
+    for tabName, _ in pairs(tabs) do
+        if ImMenu.Button(tabName) then
+            currentTab = tabName
         end
     end
 
